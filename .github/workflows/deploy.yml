@@ -8,9 +8,10 @@
 #
 # Repo secrets required (Settings -> Secrets and variables -> Actions):
 #   LEGION_DEPLOY_TOKEN   the deploy token from hosting.bloxity.io
-#   GHCR_PUSH_TOKEN       a classic personal access token of the asivixlp44-cmyk
-#                         account with the `write:packages` scope. The server image
-#                         is pushed to ghcr.io/asivixlp44-cmyk/plus-one-jump-per-jump-server.
+#
+# The server image goes to ghcr.io/asivixlp44-cmyk/plus-one-jump-per-jump-server using the
+# workflow's own GITHUB_TOKEN (packages: write below), so no PAT is needed. An optional
+# GHCR_PUSH_TOKEN secret (classic PAT with write:packages) is used instead when present.
 #
 # BEFORE THE FIRST RUN: the app must already exist on hosting.bloxity.io with the
 # id in GAME_ID below. Legion has no create-on-deploy; an unknown id is a 404.
@@ -38,7 +39,7 @@ env:
   # Must match the app id on hosting.bloxity.io. The client is built against it
   # and finds its server through the Bloxity matchmaker / <id>.host.bloxity.io.
   GAME_ID: plus-one-jump-per-jump
-  # GHCR account the server image is published under (owner of GHCR_PUSH_TOKEN)
+  # GHCR account the server image is published under (the repo owner)
   IMAGE_OWNER: asivixlp44-cmyk
   IMAGE_NAME: plus-one-jump-per-jump-server
 
@@ -58,18 +59,6 @@ jobs:
             exit 1
           fi
           echo "Deploy token present (${#LEGION_TOKEN} characters)."
-
-      - name: Check the GHCR token is present
-        env:
-          GHCR_PUSH_TOKEN: ${{ secrets.GHCR_PUSH_TOKEN }}
-        run: |
-          if [ -z "${GHCR_PUSH_TOKEN:-}" ]; then
-            echo "::error::GHCR_PUSH_TOKEN is not set on this repository."
-            echo "Create a classic PAT on the ${IMAGE_OWNER} account with write:packages"
-            echo "and add it as a repository secret named GHCR_PUSH_TOKEN."
-            exit 1
-          fi
-          echo "GHCR token present; the image goes to ghcr.io/${IMAGE_OWNER,,}/${IMAGE_NAME}."
 
       # Informational only: tells a bad token apart from a missing app
       - name: Diagnose the token against Legion
@@ -103,8 +92,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ steps.ch.outputs.ghcr_user }}
-          password: ${{ secrets.GHCR_PUSH_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
 
       # Context is the repo root: the server imports ../../shared/config.js
       - name: Build and push the server image
@@ -114,6 +103,8 @@ jobs:
           file: ./server/Dockerfile
           push: true
           tags: ghcr.io/${{ steps.ch.outputs.owner }}/${{ env.IMAGE_NAME }}:${{ steps.ch.outputs.channel }}-${{ steps.ch.outputs.sha }}
+          # Links the package to this repo, so GITHUB_TOKEN can keep pushing to it
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Tell Legion to roll it out
         env:

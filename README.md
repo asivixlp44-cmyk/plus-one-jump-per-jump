@@ -61,7 +61,7 @@ The hosted client finds its server through the Bloxity matchmaker (`<id>.host.bl
 One-time setup:
 
 - Create the app `plus-one-jump-per-jump` on hosting.bloxity.io (Legion has no create-on-deploy).
-- Repo secrets: `LEGION_DEPLOY_TOKEN` (from hosting.bloxity.io) and `GHCR_PUSH_TOKEN` (classic PAT of asivixlp44-cmyk with `write:packages`).
+- Repo secret: `LEGION_DEPLOY_TOKEN` (from hosting.bloxity.io). The image is pushed with the workflow's own `GITHUB_TOKEN`; a `GHCR_PUSH_TOKEN` PAT is optional.
 - After the first run, make the GHCR package public so Legion can pull it.
 - On Legion, `MONGODB_URI` is provided: player profiles live in MongoDB and are shared by every pod.
   Without it (local dev) they are kept in `server/data/profiles.json`.
