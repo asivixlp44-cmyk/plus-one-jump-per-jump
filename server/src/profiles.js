@@ -44,6 +44,8 @@ async function connectDb() {
     console.log('[DB] connected to MongoDB');
     return db;
 }
+// Where profiles are kept, for /health: 'mongodb' once connected, else 'file' (local dev)
+export function storeMode() { return USE_DB ? (db ? 'mongodb' : 'mongodb (connecting)') : 'file'; }
 // Resolves once the store can be used (instantly in file mode)
 export async function storeReady() {
     if (!USE_DB) return;
@@ -136,11 +138,16 @@ export function saveProfiles() {
 
 // A player left this pod: save them and drop them from the cache, so a later visit
 // (maybe after playing on another pod) reads fresh data from the database.
-export async function releaseProfile(uid) {
+// stillOnline is checked again after the write: the player may have rejoined while it ran,
+// and dropping their live profile from the cache then would lose everything they earn next.
+export async function releaseProfile(uid, stillOnline) {
     if (!USE_DB) return;
     const p = profiles.get(uid);
     if (!p) return;
-    try { await writeDocs([JSON.parse(JSON.stringify(p))]); profiles.delete(uid); } catch (e) {
+    try {
+        await writeDocs([JSON.parse(JSON.stringify(p))]);
+        if (!(stillOnline && stillOnline(uid)) && profiles.get(uid) === p) profiles.delete(uid);
+    } catch (e) {
         console.warn('[DB] release failed:', e.message);
     }
 }

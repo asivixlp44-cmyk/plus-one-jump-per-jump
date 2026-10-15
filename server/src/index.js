@@ -6,7 +6,7 @@ import { defineRoom } from 'colyseus';
 import express from 'express';
 import { JumpRoom, grantPurchase } from './JumpRoom.js';
 import { WEBHOOK_SECRET, installStatReporter } from './bloxity.js';
-import { saveProfiles, firstDelivery } from './profiles.js';
+import { saveProfiles, firstDelivery, storeMode } from './profiles.js';
 import { skuLookup } from '../../shared/config.js';
 
 // Serves the built client (client/dist) and the game room on the same port,
@@ -40,7 +40,8 @@ const app = config({
         jump: defineRoom(JumpRoom),
     },
     initializeExpress: (expressApp) => {
-        expressApp.get('/health', (req, res) => res.json({ ok: true }));
+        // db: where player progress is saved ('mongodb' on Legion, 'file' in local dev)
+        expressApp.get('/health', (req, res) => res.json({ ok: true, db: storeMode() }));
         expressApp.post('/api/legion-webhook', express.json({ limit: '32kb' }), buxWebhook);
         if (fs.existsSync(CLIENT_DIST)) expressApp.use(express.static(CLIENT_DIST));
     },

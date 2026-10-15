@@ -118,7 +118,7 @@ export class JumpRoom extends Room {
         this.state.players.delete(client.sessionId);
         this.sessions.delete(client.sessionId);
         markDirty();
-        if (s && !isOnline(s.profile.uid)) releaseProfile(s.profile.uid);
+        if (s && !isOnline(s.profile.uid)) releaseProfile(s.profile.uid, isOnline);
     }
 
     // Colyseus awaits this on SIGTERM, which is how Legion stops a pod on every deploy
@@ -446,7 +446,7 @@ export class JumpRoom extends Room {
         await loadProfile(uid);
         if (!this.sessions.has(client.sessionId)) return;
         s.profile = getProfile(uid, name, randomName());
-        if (!isOnline(guestProfile.uid)) releaseProfile(guestProfile.uid);
+        if (!isOnline(guestProfile.uid)) releaseProfile(guestProfile.uid, isOnline);
         s.player.name = s.profile.name;
         this.changed(client.sessionId);
         client.send('authed', { name: s.profile.name });
